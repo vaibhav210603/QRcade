@@ -243,6 +243,13 @@ function handleInput(io, socket, data) {
     const roomName = `session:${sessionId}`;
     io.to(roomName).emit('sessionInput', payload);
     
+    // Also enqueue for HTTP-polling extension clients
+    try {
+      sessions.enqueueMessage(sessionId, { type: 'input', payload });
+    } catch (e) {
+      // no-op
+    }
+    
     // Optional: log high-frequency input at debug level
     if (process.env.LOG_INPUTS === 'true') {
       console.log(`⌨️ Input from ${player}: ${type} ${key || ''}`);

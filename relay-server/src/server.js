@@ -6,7 +6,7 @@ const path = require('path');
 const cors = require('cors');
 
 const sessions = require('./sessions');
-const { createSessionEndpoint, healthEndpoint } = require('./controllers');
+const { createSessionEndpoint, healthEndpoint, pollMessagesEndpoint } = require('./controllers');
 const { setupSocketHandlers } = require('./socketHandlers');
 
 const app = express();
@@ -27,6 +27,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.get('/',(req,res)=>{res.json({message:'QRcade Relay Server running successfully on 3000'})})
 app.post('/createSession', createSessionEndpoint);
 app.get('/health', healthEndpoint);
+app.get('/poll/:sessionId', pollMessagesEndpoint);
 
 // Serve controller page
 app.get('/ctl/:sessionId', (req, res) => {

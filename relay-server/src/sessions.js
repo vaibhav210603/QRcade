@@ -26,6 +26,7 @@ function createSession(metadata = {}) {
     createdAt: now,
     expiresAt: now + SESSION_TTL,
     extensionSocketId: null,
+    messageQueue: [],
     players: {
       p1: { socketId: null, connected: false, joinedAt: null },
       p2: { socketId: null, connected: false, joinedAt: null }
@@ -207,6 +208,33 @@ function recordInput(sessionId) {
 }
 
 /**
+ * Enqueue a message for the session's poll queue
+ */
+function enqueueMessage(sessionId, payload) {
+  const session = getSession(sessionId);
+  if (!session) return false;
+  // Cap queue size to avoid unbounded growth (keep latest 1000)
+  if (session.messageQueue.length > 1000) {
+    session.messageQueue.splice(0, session.messageQueue.length - 1000);
+  }
+  session.messageQueue.push(payload);
+  updateSession(sessionId);
+  return true;
+}
+
+/**
+ * Drain and return all queued messages for a session
+ */
+function drainMessages(sessionId) {
+  const session = getSession(sessionId);
+  if (!session) return [];
+  const messages = session.messageQueue.slice();
+  session.messageQueue.length = 0;
+  updateSession(sessionId);
+  return messages;
+}
+
+/**
  * Clean up expired sessions
  */
 function cleanupExpiredSessions() {
@@ -289,5 +317,7 @@ module.exports = {
   cleanupExpiredSessions,
   getAllSessions,
   getActiveSessionsCount,
-  deleteSession
+  deleteSession,
+  enqueueMessage,
+  drainMessages
 };

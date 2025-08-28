@@ -67,6 +67,25 @@ function healthEndpoint(req, res) {
 }
 
 /**
+ * Poll queued messages for a session (for extensions)
+ * GET /poll/:sessionId
+ */
+function pollMessagesEndpoint(req, res) {
+  try {
+    const { sessionId } = req.params;
+    const session = sessions.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+    const messages = sessions.drainMessages(sessionId);
+    res.json(messages);
+  } catch (error) {
+    console.error('Error polling messages:', error);
+    res.status(500).json({ error: 'Failed to poll messages' });
+  }
+}
+
+/**
  * Invalidate session (admin)
  * POST /invalidateSession
  * Body: { sessionId: string }
@@ -176,6 +195,7 @@ module.exports = {
   healthEndpoint,
   invalidateSessionEndpoint,
   getSessionEndpoint,
+  pollMessagesEndpoint,
   errorHandler,
   notFoundHandler
 };

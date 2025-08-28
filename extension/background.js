@@ -3,11 +3,12 @@
 
 let sessionId = null;
 let isConnected = false;
+const RELAY_BASE = "https://qrcade.api.vibhaupadhyay.com";
 
 // Create a session with relay
 async function createSession() {
   try {
-    const res = await fetch("https://your-relay-server/createSession", {
+    const res = await fetch(`${RELAY_BASE}/createSession`, {
       method: "POST"
     });
     const data = await res.json();
@@ -33,14 +34,16 @@ async function startMessagePolling(sessionId) {
   
   pollingInterval = setInterval(async () => {
     try {
-      const response = await fetch(`https://your-relay-server/poll/${sessionId}`, {
+      const response = await fetch(`${RELAY_BASE}/poll/${sessionId}`, {
         method: "GET"
       });
       
       if (response.ok) {
         const messages = await response.json();
         
-        messages.forEach(payload => {
+        messages.forEach(message => {
+          if (!message || message.type !== 'input') return;
+          const payload = message.payload;
           // Forward input event to all content scripts in active tab
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs.length > 0) {

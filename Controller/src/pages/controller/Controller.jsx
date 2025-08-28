@@ -3,7 +3,7 @@ import Joystick from "../../components/Joystick";
 import Button from "../../components/Button";
 import { io } from "socket.io-client";
 
-const socket = io("https://server-url"); //socket connection to backend
+const socket = io("https://qrcade.api.vibhaupadhyay.com"); // socket connection to backend
 
 //it takes the session id from the url and joins the session
 const sessionId = new URLSearchParams(window.location.search).get("sessionId");
@@ -34,18 +34,35 @@ const Controller = () => {
     };
   }, []);
 
+  // Map UI keys to keyboard event keys
+  const mapKey = (keyName) => {
+    const mapping = {
+      up: 'ArrowUp',
+      down: 'ArrowDown',
+      left: 'ArrowLeft',
+      right: 'ArrowRight',
+      triangle: 'w',
+      square: 'a',
+      circle: 'd',
+      cross: 's'
+    };
+    return mapping[keyName] || keyName;
+  };
+
   const sendToServer = (keyName, action) => {
     if (!sessionId || !player) return;
-    
-    const eventData = {
-      session: sessionId,
-      player: player,
-      key: keyName,
-      action: action
+
+    const type = action === 'down' ? 'keydown' : action === 'up' ? 'keyup' : undefined;
+    if (!type) return;
+
+    const payload = {
+      sessionId,
+      type,
+      key: mapKey(keyName)
     };
-    
-    console.log('Sending to server:', eventData);
-    socket.emit('controller-input', eventData);
+
+    console.log('Sending input:', payload);
+    socket.emit('input', payload);
   };
 
   const handlePress = (key) => (state) => {
@@ -61,16 +78,22 @@ const Controller = () => {
   };
 
   const handleJoystickChange = (joystickType) => (values) => {
-    const joystickData = `${values.x.toFixed(2)},${values.y.toFixed(2)}`;
-    lastEventRef.current = `${joystickType}:${joystickData}`;
-    console.log(joystickType, joystickData);
-    sendToServer(joystickType, joystickData);
+    lastEventRef.current = `${joystickType}:${values.x.toFixed(2)},${values.y.toFixed(2)}`;
+    if (!sessionId || !player) return;
+    const payload = {
+      sessionId,
+      type: 'mousemove',
+      x: values.x,
+      y: values.y
+    };
+    socket.emit('input', payload);
   };
 
   const handleConnect = () => {
-    if (sessionId) {
-      socket.emit('join-session', { sessionId, player });
-      console.log(`Joining session: ${sessionId} as ${player}`);
+    if (sessionId && player) {
+      const assigned = player === 'P1' ? 'p1' : 'p2';
+      socket.emit('join', { sessionId, role: 'controller', player: assigned });
+      console.log(`Joining session: ${sessionId} as ${assigned}`);
     }
   };
 
@@ -111,7 +134,6 @@ const Controller = () => {
               }`}
               onClick={() => {
                 if (!player) return;
-                sendToServer('role', player);
                 setShowRoleSelect(false);
               }}
               disabled={!player}
